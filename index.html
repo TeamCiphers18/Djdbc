@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeByt Crypto Terminal (Supabase)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase client library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* EXACT SAME STYLES AS YOUR ORIGINAL TERMINAL */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #terminal-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: #000;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .terminal-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .terminal-header {
+            border-bottom: 1px solid rgba(77, 166, 255, 0.3);
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 10, 0.95);
+            flex-shrink: 0;
+            animation: slideIn 0.4s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .terminal-title {
+            font-weight: bold;
+            font-size: 1em;
+            color: #4da6ff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        
+        .terminal-status {
+            font-size: 0.75em;
+            color: #66b0ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .terminal-body-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
+            padding-bottom: 70px;
+        }
+        
+        .line-numbers {
+            width: 45px;
+            background: rgba(20, 20, 20, 0.95);
+            border-right: 1px solid rgba(77, 166, 255, 0.2);
+            color: #66b0ff;
+            font-size: 11px;
+            padding: 8px 5px;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+            flex-shrink: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .line-numbers-content {
+            min-height: 100%;
+        }
+        
+        .line-number {
+            height: 18px;
+            line-height: 18px;
+            margin-bottom: 2px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+            user-select: none;
+        }
+        
+        .line-number.active {
+            opacity: 1;
+            color: #99ccff;
+            font-weight: bold;
+        }
+        
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 10px 80px 10px;
+            background: #000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .output-line {
+            margin-bottom: 2px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #e5e7eb;
+            min-height: 18px;
+            animation: fadeInLine 0.1s ease-out;
+            padding-right: 5px;
+        }
+        
+        .prompt {
+            color: #4da6ff;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        
+        .terminal-input-section {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 10, 0.95);
+            border-top: 1px solid rgba(77, 166, 255, 0.3);
+            padding: 10px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .input-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 18px;
+            position: relative;
+            width: 100%;
+        }
+        
+        .input-line input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 12px;
+            flex: 1;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            caret-color: #4da6ff;
+            padding: 6px 10px;
+            min-width: 0;
+            transition: all 0.3s;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .input-line input:focus {
+            border-color: #4da6ff;
+            box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        @keyframes fadeInLine {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .command-output { color: #e5e7eb; }
+        .error-output { color: #ff6b6b; animation: shake 0.5s; }
+        .success-output { color: #4ade80; animation: pop 0.3s; }
+        .warning-output { color: #fbbf24; }
+        .info-output { color: #60a5fa; }
+        .system-output { color: #9ca3af; }
+        .encode-output { color: #4da6ff; font-weight: bold; }
+        .decode-output { color: #4da6ff; font-weight: bold; }
+        .key-output { 
+            color: #9d4edd; 
+            font-family: 'Courier New', monospace; 
+            background: rgba(157, 78, 221, 0.1); 
+            padding: 2px 4px; 
+            border-radius: 4px; 
+            word-break: break-all;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+        .highlight-output { color: #4da6ff; font-weight: bold; background: rgba(77, 166, 255, 0.1); padding: 2px 4px; border-radius: 3px; }
+        .hash-output { color: #4dc3ff; font-weight: bold; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(0.9); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .exit-btn {
+            background: rgba(77, 166, 255, 0.1);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            color: #66b0ff;
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+        
+        .exit-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .file-handling-section {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(77, 166, 255, 0.2);
+            background: rgba(15, 15, 15, 0.9);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .file-info-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #66b0ff;
+            font-size: 11px;
+            flex-wrap: wrap;
+        }
+        
+        .file-info-text {
+            font-family: 'Courier New', monospace;
+            padding: 4px 6px;
+            background: rgba(77, 166, 255, 0.08);
+            border-radius: 4px;
+            border: 1px solid rgba(77, 166, 255, 0.2);
+            font-size: 10px;
+        }
+        
+        .file-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .file-btn {
+            background: rgba(77, 166, 255, 0.1);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            color: #66b0ff;
+            padding: 4px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            touch-action: manipulation;
+        }
+        
+        .file-btn:hover:not(:disabled) {
+            background: rgba(77, 166, 255, 0.2);
+            color: #ffffff;
+            border-color: #4da6ff;
+            transform: translateY(-2px);
+        }
+        
+        .file-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .file-input-hidden {
+            display: none;
+        }
+        
+        .key-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        
+        .key-status.active {
+            background: rgba(76, 222, 128, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(76, 222, 128, 0.3);
+        }
+        
+        .key-status.inactive {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        
+        .key-display-container {
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .key-display {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #66b0ff;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .key-display-full {
+            max-height: 400px;
+        }
+        
+        .key-display-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(77, 166, 255, 0.2);
+        }
+        
+        .key-display-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .key-btn {
+            background: rgba(77, 166, 255, 0.1);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            color: #66b0ff;
+            padding: 4px 8px;
+            font-size: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            touch-action: manipulation;
+        }
+        
+        .key-btn:hover {
+            background: rgba(77, 166, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .hash-display-container {
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(77, 195, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .hash-display {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #4dc3ff;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .hash-display-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(77, 195, 255, 0.2);
+        }
+        
+        .suggestion-box {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(20, 20, 20, 0.98);
+            border: 1px solid rgba(77, 166, 255, 0.3);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            padding: 8px;
+            display: none;
+            z-index: 101;
+            box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.8);
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 0;
+            backdrop-filter: blur(10px);
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .suggestion-item {
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-bottom: 2px;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            touch-action: manipulation;
+        }
+        
+        .suggestion-item:hover {
+            background: rgba(77, 166, 255, 0.15);
+            color: #4da6ff;
+        }
+        
+        .suggestion-item.selected {
+            background: rgba(77, 166, 255, 0.2);
+            color: #4da6ff;
+            border-left: 3px solid #4da6ff;
+        }
+        
+        .suggestion-command {
+            font-weight: 600;
+            color: #4da6ff;
+            font-size: 11px;
+        }
+        
+        .suggestion-desc {
+            font-size: 9px;
+            color: #9ca3af;
+            text-align: right;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(77, 166, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4da6ff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 480px) {
+            .terminal-header {
+                padding: 8px 10px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            
+            .terminal-title {
+                font-size: 0.9em;
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .terminal-status {
+                width: 100%;
+                justify-content: space-between;
+                font-size: 0.7em;
+            }
+            
+            .line-numbers {
+                width: 35px;
+                font-size: 9px;
+                padding: 6px 3px;
+            }
+            
+            .terminal-output {
+                padding: 6px 8px 70px 8px;
+                font-size: 11px;
+            }
+            
+            .terminal-input-section {
+                padding: 8px;
+            }
+            
+            .input-line input {
+                font-size: 11px;
+                padding: 5px 8px;
+            }
+            
+            .prompt {
+                font-size: 10px;
+            }
+            
+            .file-handling-section {
+                padding: 8px 10px;
+            }
+            
+            .file-info-display {
+                gap: 6px;
+            }
+            
+            .file-controls {
+                gap: 4px;
+            }
+            
+            .key-display {
+                font-size: 9px;
+                max-height: 150px;
+            }
+            
+            .key-display-full {
+                max-height: 300px;
+            }
+            
+            .hash-display {
+                font-size: 9px;
+                max-height: 120px;
+            }
+            
+            .exit-btn {
+                padding: 5px 8px;
+                font-size: 10px;
+            }
+            
+            .suggestion-box {
+                max-height: 120px;
+            }
+            
+            .suggestion-item {
+                padding: 5px 6px;
+                font-size: 10px;
+            }
+            
+            .suggestion-desc {
+                max-width: 90px;
+            }
+        }
+        
+        @media (min-width: 481px) and (max-width: 768px) {
+            .terminal-header {
+                padding: 10px 12px;
+            }
+            
+            .terminal-title {
+                font-size: 1em;
+            }
+            
+            .line-numbers {
+                width: 40px;
+                font-size: 10px;
+            }
+            
+            .terminal-output {
+                font-size: 12px;
+            }
+            
+            .key-display {
+                font-size: 11px;
+            }
+            
+            .hash-display {
+                font-size: 11px;
+            }
+        }
+        
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        button, .file-btn, .key-btn, .exit-btn {
+            min-height: 32px;
+            min-width: 32px;
+        }
+        
+        @media (max-height: 500px) {
+            .terminal-body-container {
+                padding-bottom: 60px;
+            }
+            
+            .key-display {
+                max-height: 120px;
+            }
+            
+            .key-display-full {
+                max-height: 200px;
+            }
+            
+            .hash-display {
+                max-height: 100px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
+        /* Hamburger and sidebar */
+        .hamburger-btn {
+            background: none;
+            border: none;
+            color: #4da6ff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 5px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+        .hamburger-btn:hover {
+            color: #66b0ff;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: #111;
+            border-right: 2px solid #4da6ff;
+            z-index: 3000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            color: #e5e7eb;
+            font-family: 'Courier New', monospace;
+            padding: 20px 10px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #4da6ff;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #4da6ff;
+        }
+        .sidebar-close {
+            background: none;
+            border: none;
+            color: #4da6ff;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .sidebar-section {
+            margin-bottom: 15px;
+            padding: 8px;
+            background: rgba(77, 166, 255, 0.05);
+            border-left: 3px solid #4da6ff;
+        }
+        .sidebar-section h4 {
+            color: #4da6ff;
+            margin-bottom: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .sidebar-section p {
+            margin: 2px 0;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div id="terminal-page">
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <i class="fas fa-terminal"></i> CODEBYT CRYPTO TERMINAL
+                </div>
+                <div class="terminal-status">
+                    <button class="hamburger-btn" id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+                    <span>RESPONSE: <span id="response-time">0ms</span></span>
+                    <div class="key-status inactive" id="key-status">
+                        <i class="fas fa-key"></i> NOT LOGGED IN
+                    </div>
+                    <button class="exit-btn" id="exit-terminal-btn">
+                        <i class="fas fa-sign-out-alt"></i> Exit
+                    </button>
+                </div>
+            </div>
+            
+            <div class="file-handling-section">
+                <div class="file-info-display">
+                    <span>File: <span id="file-name" class="file-info-text">None</span></span>
+                    <span>Size: <span id="file-size" class="file-info-text">0 KB</span></span>
+                    <span>Type: <span id="file-type" class="file-info-text">None</span></span>
+                </div>
+                <div class="file-controls">
+                    <button class="file-btn" id="upload-file-btn">
+                        <i class="fas fa-upload"></i> Upload File
+                    </button>
+                    <button class="file-btn" id="download-file-btn" disabled>
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="file-btn" id="clear-file-btn">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                    <input type="file" id="file-input" class="file-input-hidden" accept="*/*">
+                </div>
+            </div>
+            
+            <div class="terminal-body-container">
+                <div class="line-numbers" id="line-numbers">
+                    <div class="line-numbers-content" id="line-numbers-content"></div>
+                </div>
+                <div class="terminal-output" id="terminal-output"></div>
+            </div>
+            
+            <div class="terminal-input-section">
+                <div class="suggestion-box" id="suggestion-box"></div>
+                <div class="input-line" id="fixed-input-line">
+                    <span class="prompt">root@codebyt:~#</span>
+                    <input type="text" class="terminal-input" autocomplete="off" spellcheck="false" placeholder="Type command..." id="terminal-input">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>SYSTEM DASHBOARD</span>
+            <button class="sidebar-close" id="sidebar-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sidebar-content" id="sidebar-content"></div>
+    </div>
+
+    <canvas id="qr-canvas" style="display:none;"></canvas>
+
+    <script>
+        // ==================== SUPABASE CONFIGURATION ====================
+        const SUPABASE_URL = 'https://ujjbduaqvxtlanbsjswi.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqamJkdWFxdnh0bGFuYnNqc3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODk1NTMsImV4cCI6MjA4NzA2NTU1M30.2sarKX2GSioxGmmal39m_FuWzxdgZ9eGS5jVzB7En38';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: true
+            }
+        });
+
+        // ==================== GLOBAL STATE ====================
+        const state = {
+            user: null,
+            session: null,
+            currentKey: null,
+            commandHistory: [],
+            historyIndex: -1,
+            performanceStats: {
+                startTime: Date.now(),
+                commandCount: 0,
+                totalResponseTime: 0
+            },
+            currentFile: {
+                name: null,
+                size: 0,
+                content: null,
+                type: null,
+                arrayBuffer: null
+            },
+            processedFile: {
+                name: null,
+                content: null,
+                size: 0,
+                type: null
+            }
+        };
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            if (days > 0) return `${days}d ${hours % 24}h`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                displayOutput('Copied to clipboard', 'success-output');
+            }).catch(err => {
+                displayOutput('Failed to copy: ' + err, 'error-output');
+            });
+        }
+
+        function saveAsFile(content, filename) {
+            const blob = new Blob([content], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== AUTHENTICATION ====================
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                state.user = session.user;
+                state.session = session;
+                updateKeyStatus();
+                displayOutput(`Session restored. Logged in as ${session.user.email}`, 'success-output');
+            }
+            return session;
+        }
+
+        async function login(email, password) {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+            if (error) throw error;
+            state.user = data.user;
+            state.session = data.session;
+            updateKeyStatus();
+            displayOutput(`✅ Logged in as ${email}`, 'success-output');
+            return data.user;
+        }
+
+        async function register(email, password) {
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password
+            });
+            if (error) throw error;
+            displayOutput(`✅ Account created for ${email}. Please check your email for confirmation.`, 'success-output');
+            return data.user;
+        }
+
+        async function logout() {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error;
+            state.user = null;
+            state.session = null;
+            state.currentKey = null;
+            updateKeyStatus();
+            displayOutput('✅ Logged out', 'success-output');
+        }
+
+        // ==================== UI FUNCTIONS ====================
+        function displayInput(command) {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.className = 'output-line';
+            line.innerHTML = `<span class="prompt">root@codebyt:~#</span> ${command}`;
+            output.appendChild(line);
+            updateLineNumbers();
+            scrollToBottom();
+        }
+
+        function displayOutput(text, type = 'system-output') {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.className = 'output-line ' + type;
+            line.textContent = text;
+            output.appendChild(line);
+            updateLineNumbers();
+            scrollToBottom();
+        }
+
+        function updateLineNumbers() {
+            const output = document.getElementById('terminal-output');
+            const lineNumbersContent = document.getElementById('line-numbers-content');
+            if (!output || !lineNumbersContent) return;
+            const lines = output.querySelectorAll('.output-line');
+            lineNumbersContent.innerHTML = '';
+            for (let i = 1; i <= lines.length; i++) {
+                const num = document.createElement('div');
+                num.className = 'line-number';
+                if (i === lines.length) num.classList.add('active');
+                num.textContent = i;
+                lineNumbersContent.appendChild(num);
+            }
+            syncLineNumbersScroll();
+        }
+
+        function syncLineNumbersScroll() {
+            const output = document.getElementById('terminal-output');
+            const lineNumbers = document.getElementById('line-numbers');
+            if (output && lineNumbers) {
+                lineNumbers.scrollTop = output.scrollTop;
+            }
+        }
+
+        function scrollToBottom() {
+            const output = document.getElementById('terminal-output');
+            if (output) {
+                requestAnimationFrame(() => output.scrollTop = output.scrollHeight);
+            }
+        }
+
+        function updateKeyStatus() {
+            const keyStatus = document.getElementById('key-status');
+            if (!keyStatus) return;
+            if (!state.user) {
+                keyStatus.className = 'key-status inactive';
+                keyStatus.innerHTML = `<i class="fas fa-key"></i> NOT LOGGED IN`;
+                return;
+            }
+            if (!state.currentKey) {
+                keyStatus.className = 'key-status inactive';
+                keyStatus.innerHTML = `<i class="fas fa-key"></i> NO KEY`;
+                return;
+            }
+            keyStatus.className = 'key-status active';
+            keyStatus.innerHTML = `<i class="fas fa-key"></i> KEY ACTIVE`;
+        }
+
+        function updateSidebar() {
+            const content = document.getElementById('sidebar-content');
+            if (!content) return;
+            const uptime = formatUptime(Date.now() - state.performanceStats.startTime);
+            content.innerHTML = `
+                <div class="sidebar-section">
+                    <h4>SESSION</h4>
+                    <p>User: ${state.user ? state.user.email : 'Not logged in'}</p>
+                    <p>Uptime: ${uptime}</p>
+                    <p>Commands: ${state.performanceStats.commandCount}</p>
+                </div>
+                <div class="sidebar-section">
+                    <h4>KEY</h4>
+                    <p>Status: ${state.currentKey ? 'Active' : 'None'}</p>
+                    ${state.currentKey ? `<p>Fingerprint: ${state.currentKey.fingerprint}</p>` : ''}
+                </div>
+                <div class="sidebar-section">
+                    <h4>FILE</h4>
+                    <p>${state.currentFile.name || 'No file'}</p>
+                </div>
+            `;
+        }
+
+        // ==================== COMMANDS ====================
+        const commands = {
+            help: {
+                desc: 'Show help',
+                exec: function() {
+                    displayOutput('=== CODEBYT CRYPTO TERMINAL (SUPABASE) ===', 'info-output');
+                    displayOutput('help                 - Show this help', 'system-output');
+                    displayOutput('register email pass  - Create account', 'system-output');
+                    displayOutput('login email pass     - Login', 'system-output');
+                    displayOutput('logout               - Logout', 'system-output');
+                    displayOutput('genkey               - Generate encryption key', 'system-output');
+                    displayOutput('keyinfo              - Show current key info', 'system-output');
+                    displayOutput('encode <text>        - Encrypt text (base64 mock)', 'system-output');
+                    displayOutput('decode <text>        - Decrypt text', 'system-output');
+                    displayOutput('clear                - Clear screen', 'system-output');
+                    displayOutput('session              - Show session info', 'system-output');
+                }
+            },
+
+            register: {
+                desc: 'Create a new account',
+                exec: async function(args) {
+                    if (args.length < 2) {
+                        displayOutput('Usage: register <email> <password>', 'error-output');
+                        return;
+                    }
+                    const email = args[0];
+                    const password = args.slice(1).join(' ');
+                    try {
+                        await register(email, password);
+                    } catch (err) {
+                        displayOutput(`Registration failed: ${err.message}`, 'error-output');
+                    }
+                }
+            },
+
+            login: {
+                desc: 'Login to your account',
+                exec: async function(args) {
+                    if (args.length < 2) {
+                        displayOutput('Usage: login <email> <password>', 'error-output');
+                        return;
+                    }
+                    const email = args[0];
+                    const password = args.slice(1).join(' ');
+                    try {
+                        await login(email, password);
+                    } catch (err) {
+                        displayOutput(`Login failed: ${err.message}`, 'error-output');
+                    }
+                }
+            },
+
+            logout: {
+                desc: 'Logout',
+                exec: async function() {
+                    try {
+                        await logout();
+                    } catch (err) {
+                        displayOutput(`Logout failed: ${err.message}`, 'error-output');
+                    }
+                }
+            },
+
+            genkey: {
+                desc: 'Generate encryption key',
+                exec: function() {
+                    if (!state.user) {
+                        displayOutput('Please login first', 'error-output');
+                        return;
+                    }
+                    const fingerprint = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                        .map(b => b.toString(16).padStart(2, '0')).join('');
+                    state.currentKey = {
+                        id: 'key_' + Date.now(),
+                        fingerprint: fingerprint
+                    };
+                    displayOutput('✅ Key generated successfully!', 'success-output');
+                    displayOutput(`🔑 Fingerprint: ${fingerprint}`, 'key-output');
+                    updateKeyStatus();
+                    updateSidebar();
+                }
+            },
+
+            keyinfo: {
+                desc: 'Show current key info',
+                exec: function() {
+                    if (!state.currentKey) {
+                        displayOutput('No key selected. Use genkey first.', 'info-output');
+                        return;
+                    }
+                    displayOutput('KEY INFORMATION:', 'key-output');
+                    displayOutput(`ID: ${state.currentKey.id}`, 'system-output');
+                    displayOutput(`Fingerprint: ${state.currentKey.fingerprint}`, 'info-output');
+                }
+            },
+
+            encode: {
+                desc: 'Encrypt text (base64 mock)',
+                exec: function(args) {
+                    if (!state.user) {
+                        displayOutput('Please login first', 'error-output');
+                        return;
+                    }
+                    if (!state.currentKey) {
+                        displayOutput('Generate a key first with genkey', 'error-output');
+                        return;
+                    }
+                    const text = args.join(' ');
+                    if (!text) {
+                        displayOutput('Usage: encode <text>', 'error-output');
+                        return;
+                    }
+                    const encoded = btoa(text);
+                    displayOutput('ENCRYPTED:', 'encode-output');
+                    displayOutput(encoded, 'command-output');
+                }
+            },
+
+            decode: {
+                desc: 'Decrypt text',
+                exec: function(args) {
+                    const text = args.join(' ');
+                    if (!text) {
+                        displayOutput('Usage: decode <text>', 'error-output');
+                        return;
+                    }
+                    try {
+                        const decoded = atob(text);
+                        displayOutput('DECRYPTED:', 'decode-output');
+                        displayOutput(decoded, 'command-output');
+                    } catch {
+                        displayOutput('Invalid base64 text', 'error-output');
+                    }
+                }
+            },
+
+            session: {
+                desc: 'Show session info',
+                exec: function() {
+                    const uptime = formatUptime(Date.now() - state.performanceStats.startTime);
+                    displayOutput('SESSION INFORMATION', 'info-output');
+                    displayOutput(`User: ${state.user ? state.user.email : 'Not logged in'}`, 'system-output');
+                    displayOutput(`Uptime: ${uptime}`, 'system-output');
+                    displayOutput(`Commands: ${state.performanceStats.commandCount}`, 'system-output');
+                    displayOutput(`Key set: ${state.currentKey ? 'Yes' : 'No'}`, 'system-output');
+                }
+            },
+
+            clear: {
+                desc: 'Clear terminal',
+                exec: function() {
+                    document.getElementById('terminal-output').innerHTML = '';
+                    updateLineNumbers();
+                }
+            }
+        };
+
+        // ==================== INPUT HANDLER ====================
+        function setupInput() {
+            const input = document.getElementById('terminal-input');
+            if (!input) return;
+
+            input.addEventListener('keypress', async function(e) {
+                if (e.key === 'Enter') {
+                    const command = this.value.trim();
+                    if (!command) return;
+
+                    displayInput(command);
+                    this.value = '';
+
+                    const parts = command.split(' ');
+                    const cmd = parts[0].toLowerCase();
+                    const args = parts.slice(1);
+
+                    const start = performance.now();
+
+                    if (commands[cmd]) {
+                        try {
+                            await commands[cmd].exec(args);
+                            state.performanceStats.commandCount++;
+                        } catch (err) {
+                            displayOutput(`Error: ${err.message}`, 'error-output');
+                        }
+                    } else {
+                        displayOutput(`Command not found: ${cmd}`, 'error-output');
+                        displayOutput('Type "help" for commands', 'info-output');
+                    }
+
+                    const responseTime = performance.now() - start;
+                    state.performanceStats.totalResponseTime += responseTime;
+                    document.getElementById('response-time').textContent = responseTime.toFixed(1) + 'ms';
+                    updateSidebar();
+                }
+            });
+
+            // Command history (arrow up/down)
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (state.commandHistory.length === 0) return;
+                    if (state.historyIndex < state.commandHistory.length - 1) state.historyIndex++;
+                    this.value = state.commandHistory[state.commandHistory.length - 1 - state.historyIndex] || '';
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (state.historyIndex > 0) state.historyIndex--;
+                    else state.historyIndex = -1;
+                    this.value = state.historyIndex === -1 ? '' : state.commandHistory[state.commandHistory.length - 1 - state.historyIndex];
+                }
+            });
+        }
+
+        // ==================== FILE HANDLING ====================
+        function setupFileHandling() {
+            const uploadBtn = document.getElementById('upload-file-btn');
+            const fileInput = document.getElementById('file-input');
+            const downloadBtn = document.getElementById('download-file-btn');
+            const clearBtn = document.getElementById('clear-file-btn');
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    state.currentFile = {
+                        name: file.name,
+                        size: file.size,
+                        content: ev.target.result,
+                        type: file.type,
+                        arrayBuffer: ev.target.result
+                    };
+                    document.getElementById('file-name').textContent = file.name;
+                    document.getElementById('file-size').textContent = formatFileSize(file.size);
+                    document.getElementById('file-type').textContent = file.type || 'unknown';
+                    displayOutput(`File uploaded: ${file.name}`, 'success-output');
+                };
+                reader.readAsArrayBuffer(file);
+                fileInput.value = '';
+            });
+
+            downloadBtn.addEventListener('click', function() {
+                if (!state.processedFile.content) {
+                    displayOutput('No processed file', 'error-output');
+                    return;
+                }
+                saveAsFile(state.processedFile.content, state.processedFile.name);
+            });
+
+            clearBtn.addEventListener('click', function() {
+                state.currentFile = { name: null, size: 0, content: null, type: null, arrayBuffer: null };
+                state.processedFile = { name: null, content: null, size: 0, type: null };
+                document.getElementById('file-name').textContent = 'None';
+                document.getElementById('file-size').textContent = '0 KB';
+                document.getElementById('file-type').textContent = 'None';
+                downloadBtn.disabled = true;
+                displayOutput('File cleared', 'info-output');
+            });
+        }
+
+        // ==================== SIDEBAR ====================
+        function setupSidebar() {
+            const toggle = document.getElementById('sidebar-toggle');
+            const close = document.getElementById('sidebar-close');
+            const sidebar = document.getElementById('sidebar');
+
+            toggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                if (sidebar.classList.contains('open')) updateSidebar();
+            });
+
+            close.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+            });
+        }
+
+        // ==================== INIT ====================
+        async function init() {
+            displayOutput('=== CODEBYT CRYPTO TERMINAL (SUPABASE) ===', 'info-output');
+            displayOutput('Type "help" for commands', 'system-output');
+            displayOutput('', 'system-output');
+
+            setupInput();
+            setupFileHandling();
+            setupSidebar();
+
+            // Check for existing session
+            await checkSession();
+
+            // Update line numbers on resize
+            window.addEventListener('resize', updateLineNumbers);
+
+            // Observe output changes
+            const observer = new MutationObserver(updateLineNumbers);
+            observer.observe(document.getElementById('terminal-output'), { childList: true, subtree: true });
+        }
+
+        init();
+    </script>
+</body>
+</html>
